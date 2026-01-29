@@ -44,5 +44,5 @@ Thumbs.db
 *.log
 
 # Output directory (keep structure, ignore content)
-daily_vibes/*.md
+# daily_vibes/*.md  # コメントアウト: GitHubで見れるようにするため
 !daily_vibes/.gitkeep
