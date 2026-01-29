@@ -215,6 +215,24 @@ MAX_TWEETS_PER_USER = 5
 
 ---
 
+## 📤 GitHubへの公開 / Publishing to GitHub
+
+このプロジェクトをGitHubに公開するには、`PUSH_TO_GITHUB.md`を参照してください。
+
+To publish this project to GitHub, see `PUSH_TO_GITHUB.md`.
+
+### クイックスタート / Quick Start
+
+```bash
+# 1. GitHubでリポジトリを作成（https://github.com/new）
+
+# 2. リモートを追加
+git remote add origin https://github.com/asukabase7/it_trend_watcher.git
+
+# 3. プッシュ
+git push -u origin main
+```
+
 ## 🤝 コントリビューション / Contribution
 
 このプロジェクトは「落とし物」として公開されています。自由にフォークして、改善してください！
