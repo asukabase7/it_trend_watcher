@@ -17,9 +17,14 @@ GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
 TWITTER_API_KEY = os.getenv('TWITTER_API_KEY', '')
 TWITTER_API_SECRET = os.getenv('TWITTER_API_SECRET', '')
 
+# Slack通知（任意: Incoming Webhook URL を設定すると実行完了時に投稿）
+SLACK_WEBHOOK_URL = os.getenv('SLACK_WEBHOOK_URL', '')
+
 # RSSフィードURL
 NIKKEI_TECH_RSS = 'https://www.nikkei.com/technology/rss.xml'
 TECHCRUNCH_RSS = 'https://techcrunch.com/feed/'
+ZENN_TOPICS_TECH_RSS = 'https://zenn.dev/topics/tech/feed'
+QIITA_TECH_RSS = 'https://qiita.com/tags/tech/feed'
 
 # Twitter収集対象アカウント
 TWITTER_TARGETS = [
@@ -34,7 +39,7 @@ OUTPUT_DIR = PROJECT_ROOT / 'daily_vibes'
 MAX_ARTICLES_PER_SOURCE = 10  # 各ソースから取得する最大記事数
 MAX_TWEETS_PER_USER = 5       # 各ユーザーから取得する最大ツイート数
 
-# Gemini API設定
-GEMINI_MODEL = 'gemini-pro'
+# Gemini API設定（google-genai パッケージ用）
+GEMINI_MODEL = 'gemini-2.5-flash'
 GEMINI_MAX_TOKENS = 500
 GEMINI_TEMPERATURE = 0.7

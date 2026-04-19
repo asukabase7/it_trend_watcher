@@ -43,6 +43,6 @@ Thumbs.db
 # Logs
 *.log
 
-# Output directory (keep structure, ignore content)
-# daily_vibes/*.md  # コメントアウト: GitHubで見れるようにするため
+# Output directory: Markdown reports are committed, operational logs are not
+daily_vibes/run_summary_*.txt
 !daily_vibes/.gitkeep

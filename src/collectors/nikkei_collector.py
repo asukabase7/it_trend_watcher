@@ -1,9 +1,9 @@
 """
 日経電子版テック面記事収集モジュール
 """
+import re
 import feedparser
 import requests
-from bs4 import BeautifulSoup
 import logging
 import sys
 from pathlib import Path
@@ -17,6 +17,18 @@ sys.path.insert(0, str(project_root))
 from config.settings import NIKKEI_TECH_RSS, MAX_ARTICLES_PER_SOURCE
 
 logger = logging.getLogger(__name__)
+
+# RSS取得用ヘッダー（日経はBot拒否することがあるため）
+DEFAULT_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0',
+    'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+}
+
+
+def _sanitize_xml_string(raw: str) -> str:
+    """XMLとして不正な文字を除去してfeedparserで解析しやすくする"""
+    # 制御文字（改行・タブ以外）を除去
+    return re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', raw)
 
 
 class NikkeiCollector:
@@ -65,7 +77,11 @@ class NikkeiCollector:
         
         try:
             logger.info(f"日経電子版RSSフィードを取得中: {self.rss_url}")
-            feed = feedparser.parse(self.rss_url)
+            resp = requests.get(self.rss_url, headers=DEFAULT_HEADERS, timeout=15)
+            resp.raise_for_status()
+            raw = resp.content.decode('utf-8', errors='replace')
+            raw = _sanitize_xml_string(raw)
+            feed = feedparser.parse(raw)
             
             if feed.bozo:
                 logger.warning(f"RSSフィードの解析エラー: {feed.bozo_exception}")

@@ -31,7 +31,11 @@ echo "[Step 3] pipをアップグレード中..."
 pip install --upgrade pip
 
 echo ""
-echo "[Step 4] 依存パッケージをインストール中..."
+echo "[Step 4] 競合パッケージの削除（google-genai 用）..."
+pip uninstall -y google-generativeai 2>/dev/null || true
+
+echo ""
+echo "[Step 5] 依存パッケージをインストール中..."
 pip install -r requirements.txt
 
 echo ""

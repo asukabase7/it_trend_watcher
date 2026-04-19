@@ -16,6 +16,11 @@ from config.settings import TWITTER_TARGETS, MAX_TWEETS_PER_USER
 
 logger = logging.getLogger(__name__)
 
+REQUEST_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; rv:91.0) Gecko/20100101 Firefox/91.0',
+    'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+}
+
 
 class TwitterCollector:
     """X（Twitter）から最新投稿を収集"""
@@ -23,6 +28,57 @@ class TwitterCollector:
     def __init__(self):
         self.targets = TWITTER_TARGETS
         self.max_tweets = MAX_TWEETS_PER_USER
+
+    def _parse_rss_into_tweets(self, response_content: bytes, username: str) -> List[Dict]:
+        """RSSレスポンスをパースしてツイートリストを返す。失敗時は空リスト。"""
+        import feedparser
+        feed = feedparser.parse(response_content)
+        if feed.bozo:
+            logger.warning(f"RSSフィードの解析エラー: {feed.bozo_exception}")
+            return []
+        tweets = []
+        for entry in feed.entries[:self.max_tweets]:
+            try:
+                published = None
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    published = datetime(*entry.published_parsed[:6])
+                elif hasattr(entry, 'published'):
+                    try:
+                        from dateutil import parser as date_parser
+                        published = date_parser.parse(entry.published)
+                    except Exception:
+                        published = datetime.now()
+                else:
+                    published = datetime.now()
+                content = entry.get('title', entry.get('description', ''))
+                url = entry.get('link', f"https://twitter.com/{username}/status/unknown")
+                tweets.append({
+                    'username': username,
+                    'content': content,
+                    'url': url,
+                    'published': published,
+                    'needs_translation': True,
+                    'source': 'Twitter',
+                })
+            except Exception as e:
+                logger.error(f"ツイートの処理中にエラー: {e}")
+        return tweets
+
+    def _try_fetch_rss(self, rss_url: str, username: str, out_tweets: List[Dict]) -> bool:
+        """指定URLからRSSを取得しout_tweetsに追記。成功時True。"""
+        try:
+            logger.info(f"RSSを取得中: {rss_url}")
+            response = requests.get(rss_url, headers=REQUEST_HEADERS, timeout=15, allow_redirects=True)
+            if response.status_code != 200:
+                return False
+            parsed = self._parse_rss_into_tweets(response.content, username)
+            if parsed:
+                out_tweets.extend(parsed)
+                logger.info(f"{username} から {len(parsed)} 件のツイートを取得しました")
+                return True
+        except Exception as e:
+            logger.warning(f"RSS取得に失敗: {e}")
+        return False
     
     def _get_tweets_via_rss(self, username: str) -> List[Dict]:
         """
@@ -36,73 +92,30 @@ class TwitterCollector:
         """
         tweets = []
         
-        # Nitterインスタンス経由でRSSを取得
-        # 複数のNitterインスタンスを試行
+        # Farside: 稼働中のNitterインスタンスへ自動リダイレクト（推奨）
+        farside_url = f"https://farside.link/nitter/{username}/rss"
+        if self._try_fetch_rss(farside_url, username, tweets):
+            return tweets
+
+        # Nitterインスタンスを直指定（Wiki・status.d420.deで稼働報告のあるもの）
         nitter_instances = [
+            'https://nitter.privacydev.net',
+            'https://nitter.kavin.rocks',
+            'https://nitter.poast.org',
+            'https://xcancel.com',
+            'https://nitter.qwik.space',
+            'https://bird.habedieeh.re',
+            'https://t.com.sb',
+            'https://nitter.lunar.icu',
+            'https://nitter.tiekoetter.com',
+            'https://nitter.privacyredirect.com',
             'https://nitter.net',
-            'https://nitter.it',
-            'https://nitter.pussthecat.org',
         ]
         
         for instance in nitter_instances:
-            try:
-                rss_url = f"{instance}/{username}/rss"
-                logger.info(f"Nitter経由でRSSを取得中: {rss_url}")
-                
-                response = requests.get(rss_url, timeout=10)
-                if response.status_code == 200:
-                    import feedparser
-                    feed = feedparser.parse(response.content)
-                    
-                    if feed.bozo:
-                        logger.warning(f"RSSフィードの解析エラー: {feed.bozo_exception}")
-                        continue
-                    
-                    entries = feed.entries[:self.max_tweets]
-                    
-                    for entry in entries:
-                        try:
-                            # 公開日時のパース
-                            published = None
-                            if hasattr(entry, 'published_parsed') and entry.published_parsed:
-                                published = datetime(*entry.published_parsed[:6])
-                            elif hasattr(entry, 'published'):
-                                try:
-                                    from dateutil import parser as date_parser
-                                    published = date_parser.parse(entry.published)
-                                except:
-                                    published = datetime.now()
-                            else:
-                                published = datetime.now()
-                            
-                            # ツイート本文を取得（RSSのタイトルまたは説明から）
-                            content = entry.get('title', entry.get('description', ''))
-                            
-                            # URLを取得
-                            url = entry.get('link', f"https://twitter.com/{username}/status/unknown")
-                            
-                            tweet = {
-                                'username': username,
-                                'content': content,
-                                'url': url,
-                                'published': published,
-                                'needs_translation': True,  # Twitterは英語が多いので要約が必要
-                                'source': 'Twitter'
-                            }
-                            
-                            tweets.append(tweet)
-                            
-                        except Exception as e:
-                            logger.error(f"ツイートの処理中にエラー: {e}")
-                            continue
-                    
-                    logger.info(f"{username} から {len(tweets)} 件のツイートを取得しました")
-                    break  # 成功したらループを抜ける
-                    
-            except Exception as e:
-                logger.warning(f"Nitterインスタンス {instance} での取得に失敗: {e}")
-                continue
-        
+            rss_url = f"{instance}/{username}/rss"
+            if self._try_fetch_rss(rss_url, username, tweets):
+                break
         return tweets
     
     def collect(self) -> List[Dict]:

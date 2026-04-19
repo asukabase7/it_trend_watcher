@@ -38,11 +38,12 @@ This tool is essential for modern engineers for the following reasons:
 
 ## ✨ 機能 / Features
 
-- 🇯🇵 **日経電子版テック面**: 日本の主要テクノロジーニュースを収集
-- 🐦 **X (Twitter)**: @karpathy、@jasonlkなどの影響力のあるエンジニアの投稿を収集
-- 🌐 **TechCrunch**: 世界の最新テックニュースを収集
-- 🤖 **AI要約**: Gemini APIを使用して英語コンテンツを3行のプロエンジニア風日本語で要約
-- 📝 **Markdown出力**: GitHubで美しく表示されるMarkdown形式で日次レポートを生成
+- 🌐 **TechCrunch**: 世界の最新テックニュースを収集（英語→Gemini AI で日本語要約）
+- 📘 **Zenn**: 日本語テック記事を収集
+- 📝 **Qiita**: 日本語テック記事を収集
+- 🤖 **AI要約**: Gemini API を使用して英語コンテンツを3行のプロエンジニア風日本語で要約
+- 📄 **Markdown出力**: GitHubで美しく表示されるMarkdown形式で日次レポートを生成
+- 🔔 **Slack通知**（任意）: 実行完了時に収集件数・要約結果を投稿
 
 ---
 
@@ -134,20 +135,28 @@ crontab -e
 it_trend_watcher/
 ├── src/
 │   ├── collectors/          # データ収集モジュール
-│   │   ├── nikkei_collector.py
-│   │   ├── twitter_collector.py
-│   │   └── techcrunch_collector.py
+│   │   ├── techcrunch_collector.py
+│   │   ├── zenn_collector.py
+│   │   ├── qiita_collector.py
+│   │   ├── nikkei_collector.py   # (将来利用)
+│   │   └── twitter_collector.py  # (将来利用)
 │   ├── processors/           # データ処理モジュール
 │   │   └── gemini_summarizer.py
+│   ├── notifiers/            # 通知モジュール
+│   │   └── slack.py
 │   ├── writers/              # 出力モジュール
 │   │   └── markdown_writer.py
 │   └── main.py               # メイン実行スクリプト
 ├── config/                   # 設定管理
 │   └── settings.py
+├── .github/workflows/        # GitHub Actions
+│   └── daily-update.yml
 ├── daily_vibes/              # 出力ディレクトリ
 │   └── log_YYYYMMDD.md
 ├── .env.example              # 環境変数テンプレート
 ├── requirements.txt          # 依存パッケージ
+├── run.py                    # エントリーポイント
+├── setup.sh                  # セットアップスクリプト
 └── README.md                 # このファイル
 ```
 
@@ -189,7 +198,7 @@ it_trend_watcher/
 - **feedparser**: RSSフィード解析
 - **requests**: HTTPリクエスト
 - **beautifulsoup4**: HTMLパース
-- **google-generativeai**: Gemini API統合
+- **google-genai**: Gemini API統合（新SDK）
 - **python-dotenv**: 環境変数管理
 
 ---
@@ -217,21 +226,27 @@ MAX_TWEETS_PER_USER = 5
 
 ## 📤 GitHubへの公開 / Publishing to GitHub
 
-このプロジェクトをGitHubに公開するには、`PUSH_TO_GITHUB.md`を参照してください。
-
-To publish this project to GitHub, see `PUSH_TO_GITHUB.md`.
-
 ### クイックスタート / Quick Start
 
 ```bash
 # 1. GitHubでリポジトリを作成（https://github.com/new）
 
 # 2. リモートを追加
-git remote add origin https://github.com/asukabase7/it_trend_watcher.git
+git remote add origin https://github.com/YOUR_USERNAME/it_trend_watcher.git
 
 # 3. プッシュ
 git push -u origin main
 ```
+
+### GitHub Actions（自動実行）の設定
+
+1. リポジトリの **Settings > Secrets and variables > Actions** を開く
+2. **New repository secret** で以下を追加：
+   - `GEMINI_API_KEY`: Google AI Studio で取得したキー（必須）
+   - `SLACK_WEBHOOK_URL`: Slack の Incoming Webhook URL（任意）
+3. Actions タブでワークフローを有効化
+
+設定後、毎日 UTC 0:00（JST 9:00）に自動実行され、`daily_vibes/log_YYYYMMDD.md` がコミットされます。
 
 ## 🤝 コントリビューション / Contribution
 
